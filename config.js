@@ -17,7 +17,7 @@ window.EMP_VOLUNTEER_CONFIG = {
 
   // Paste your deployed Google Apps Script Web App URL here (ends in /exec)
   // Leave blank to run in Interactive Local Preview Mode (saves locally in your browser)
-  APPS_SCRIPT_URL: '',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz7SEzymTBQx6S7qrWRibDr9kusw28EMYuSJtATmauP4-kfOae25mGrCFUVeyAOZDGmnw/exec',
 
   FESTIVAL_GUIDE_URL: 'https://endlessmountainspride.github.io/endless-mountains-pride/',
 
