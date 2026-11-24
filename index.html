@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#17322B" />
+  <meta name="description" content="Volunteer shift signup and schedule hub for Endless Mountains Pride at Mountaineer Park — pick open shifts, swap or cancel anytime, and receive day-before and 15-minute shift reminders." />
+  <title>Endless Mountains Pride — Volunteer Hub</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- Signature Endless Mountains Pride Ribbon -->
+  <div class="pride-ribbon" aria-hidden="true"></div>
+
+  <!-- In-App 15-Minute Shift Alert Banner -->
+  <div id="reminder-banner" class="reminder-banner hidden" role="alert" aria-live="assertive">
+    <div class="reminder-banner-inner">
+      <div class="reminder-banner-icon" aria-hidden="true">⏰</div>
+      <div class="reminder-banner-text">
+        <strong id="reminder-banner-title">Shift starts in 15 minutes</strong>
+        <p id="reminder-banner-body"></p>
+      </div>
+      <div class="reminder-banner-actions">
+        <button id="reminder-banner-view" class="btn btn-sm btn-light" type="button">My Shifts</button>
+        <button id="reminder-banner-close" class="btn-icon-close" type="button" aria-label="Dismiss reminder">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="#shifts" class="brand" id="brand-home" aria-label="Endless Mountains Pride Volunteer Hub Home">
+        <img src="./assets/logo.png" alt="Endless Mountains Pride logo" class="brand-logo" />
+        <div class="brand-text">
+          <h1 id="header-festival-name">Endless Mountains Pride</h1>
+          <p id="header-festival-meta">Volunteer Hub · Mountaineer Park</p>
+        </div>
+      </a>
+
+      <!-- Desktop Navigation -->
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <button class="nav-tab active" data-tab="shifts" id="desk-tab-shifts" type="button">
+          <span class="nav-icon" aria-hidden="true">🙌</span>
+          <span>Open Shifts</span>
+        </button>
+        <button class="nav-tab" data-tab="my-shifts" id="desk-tab-my-shifts" type="button">
+          <span class="nav-icon" aria-hidden="true">📋</span>
+          <span>My Shifts</span>
+          <span class="nav-badge hidden" id="desk-my-count">0</span>
+        </button>
+        <button class="nav-tab" data-tab="guide" id="desk-tab-guide" type="button">
+          <span class="nav-icon" aria-hidden="true">🧭</span>
+          <span>Volunteer Guide</span>
+        </button>
+      </nav>
+
+      <!-- Header Utility Actions -->
+      <div class="header-actions">
+        <button id="btn-sync-sheet" class="btn-utility" type="button" title="Refresh live shift availability" aria-label="Refresh shift availability">
+          <span class="sync-dot" id="sync-status-dot"></span>
+          <span class="btn-utility-label" id="sync-status-label">Sync</span>
+        </button>
+        <button id="btn-open-setup" class="btn-utility" type="button" title="Organizer Setup &amp; Google Sheet Connection" aria-label="Organizer setup and Google Sheet">
+          <span aria-hidden="true">⚙️</span>
+          <span class="btn-utility-label">Setup</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="app-main">
+    <!-- Preview Mode Notice (auto-hides once connected to live Apps Script backend) -->
+    <section id="preview-mode-bar" class="preview-mode-bar hidden" aria-label="Preview mode notice">
+      <div class="preview-mode-inner">
+        <div class="preview-mode-text">
+          <strong>Interactive Preview Mode</strong> — Try signing up, swapping, or canceling shifts right now! Connect your Google Sheet Apps Script in Setup to sync signups across all volunteers and send real emails.
+        </div>
+        <button id="btn-preview-setup" class="btn btn-sm btn-outline" type="button">Connect Live Sheet</button>
+      </div>
+    </section>
+
+    <!-- Live Festival Announcement Banner (from Settings tab) -->
+    <section id="announcement-bar" class="announcement-bar hidden" aria-label="Volunteer announcement">
+      <div class="announcement-inner">
+        <span class="announcement-tag">Volunteer Note</span>
+        <p id="announcement-text"></p>
+      </div>
+    </section>
+
+    <!-- ===================== TAB 1: OPEN SHIFTS ===================== -->
+    <section id="panel-shifts" class="tab-panel active" aria-labelledby="shifts-heading">
+      <div class="hero-strip">
+        <div class="hero-copy">
+          <h2 id="shifts-heading">Pick Your Volunteer Shifts</h2>
+          <p class="section-subtitle" id="shifts-subtitle">Tap one or more open time slots below. Once claimed, a slot is held for you until you swap or release it.</p>
+        </div>
+        <div class="coverage-card" aria-live="polite">
+          <div class="coverage-top">
+            <span class="coverage-label">Festival Coverage</span>
+            <strong id="coverage-numbers">0 open spots</strong>
+          </div>
+          <div class="coverage-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="coverage-bar-wrap">
+            <div class="coverage-fill" id="coverage-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="coverage-meta" id="coverage-meta">Loading live schedule…</div>
+        </div>
+      </div>
+
+      <!-- Date Selector & View Switcher -->
+      <div class="controls-row">
+        <div class="date-tabs" id="date-tabs" role="tablist" aria-label="Filter by festival date"></div>
+        <div class="view-controls">
+          <div class="segmented-control" id="view-mode-segment" role="group" aria-label="Group shifts by">
+            <button class="seg-btn active" data-view="location" id="btn-view-location" type="button">By Station</button>
+            <button class="seg-btn" data-view="time" id="btn-view-time" type="button">By Time</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search, Category Chips, and Availability Toggle -->
+      <div class="filter-bar">
+        <div class="filter-top-row">
+          <div class="search-box">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input type="search" id="shifts-search" placeholder="Search stations, duties, or times (e.g. Main Entrance, wristbands)…" aria-label="Search volunteer shifts" />
+          </div>
+          <label class="toggle-pill" for="toggle-open-only">
+            <input type="checkbox" id="toggle-open-only" />
+            <span>Open slots only</span>
+          </label>
+        </div>
+        <div class="filter-chips" id="shifts-category-chips" role="group" aria-label="Filter stations by category"></div>
+      </div>
+
+      <!-- Active Volunteer Quick Banner (if already signed in on this device) -->
+      <div id="signed-in-banner" class="signed-in-banner hidden">
+        <div class="signed-in-banner-text">
+          Signed in as <strong id="signed-in-name"></strong> (<span id="signed-in-email"></span>). New shifts you select will be added to your schedule.
+        </div>
+        <button id="btn-banner-my-shifts" class="btn btn-sm btn-outline" type="button">Manage My Shifts</button>
+      </div>
+
+      <!-- Shift List Container -->
+      <div id="shifts-container" class="shifts-container" aria-live="polite"></div>
+    </section>
+
+    <!-- ===================== TAB 2: MY SHIFTS ===================== -->
+    <section id="panel-my-shifts" class="tab-panel" aria-labelledby="my-shifts-heading">
+      <div class="section-header">
+        <div>
+          <h2 id="my-shifts-heading">My Volunteer Shifts</h2>
+          <p class="section-subtitle">View your confirmed slots, swap to a different time, release a spot, or set up 15-minute phone reminders.</p>
+        </div>
+      </div>
+
+      <!-- Lookup / Sign-In Card (shown when no volunteer is active) -->
+      <div id="my-shifts-auth" class="auth-grid">
+        <div class="card auth-card">
+          <h3>Find Your Shifts</h3>
+          <p class="card-sub">Already signed up on another device? Enter your email and the 6-character Manage Code from your confirmation email.</p>
+          <form id="lookup-form" class="stack-form" novalidate>
+            <div class="form-field">
+              <label for="lookup-email">Email Address</label>
+              <input type="email" id="lookup-email" required placeholder="you@example.com" autocomplete="email" />
+            </div>
+            <div class="form-field">
+              <label for="lookup-code">6-Character Manage Code</label>
+              <input type="text" id="lookup-code" required maxlength="10" placeholder="e.g. K7M4P2" autocomplete="off" class="code-input" />
+            </div>
+            <div id="lookup-error" class="form-error hidden" role="alert"></div>
+            <button type="submit" id="btn-lookup-submit" class="btn btn-primary btn-full">Access My Shifts</button>
+          </form>
+        </div>
+
+        <div class="card auth-card auth-card-secondary">
+          <h3>Forgot Your Manage Code?</h3>
+          <p class="card-sub">Enter the email address you signed up with and we’ll resend your 1-click Manage Link and code right away.</p>
+          <form id="recover-form" class="stack-form" novalidate>
+            <div class="form-field">
+              <label for="recover-email">Email Address</label>
+              <input type="email" id="recover-email" required placeholder="you@example.com" autocomplete="email" />
+            </div>
+            <div id="recover-feedback" class="form-feedback hidden" role="status"></div>
+            <button type="submit" id="btn-recover-submit" class="btn btn-outline btn-full">Email Me My Link</button>
+          </form>
+          <div class="auth-divider">
+            <span>New volunteer?</span>
+            <button type="button" id="btn-go-browse-shifts" class="btn-link">Browse open shifts →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Volunteer Dashboard (shown once signed in) -->
+      <div id="my-shifts-active" class="hidden">
+        <!-- Profile Summary & Quick Actions -->
+        <div class="card profile-card">
+          <div class="profile-main">
+            <div class="profile-avatar" id="profile-avatar" aria-hidden="true">EM</div>
+            <div class="profile-details">
+              <div class="profile-name-row">
+                <h3 id="profile-name">Volunteer Name</h3>
+                <span class="manage-code-pill" title="Use this code to edit your shifts on any device">
+                  Code: <strong id="profile-code">------</strong>
+                  <button type="button" id="btn-copy-code" class="btn-copy-inline" aria-label="Copy Manage Code">Copy</button>
+                </span>
+              </div>
+              <p class="profile-contact" id="profile-contact"></p>
+              <p class="profile-notes hidden" id="profile-notes"></p>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <button type="button" id="btn-edit-profile" class="btn btn-outline btn-sm">Edit Contact Info</button>
+            <button type="button" id="btn-add-more-shifts" class="btn btn-primary btn-sm">+ Add Another Shift</button>
+            <button type="button" id="btn-switch-volunteer" class="btn btn-ghost btn-sm">Switch Person</button>
+          </div>
+        </div>
+
+        <!-- Reminder Toolkit -->
+        <div class="card reminder-toolkit">
+          <div class="toolkit-copy">
+            <h3>Shift Reminders (Day-Before + 15-Min Alerts)</h3>
+            <p>You’ll automatically receive a day-before reminder email and an email 15 minutes before each shift. For lock-screen alerts at the park, add your shifts to your phone calendar or enable browser notifications:</p>
+          </div>
+          <div class="toolkit-actions">
+            <button type="button" id="btn-download-ics" class="btn btn-primary btn-sm">📅 Add to Phone Calendar (.ics)</button>
+            <button type="button" id="btn-enable-browser-alerts" class="btn btn-outline btn-sm">
+              <span id="browser-alert-icon">🔔</span>
+              <span id="browser-alert-label">Enable 15-Min Browser Alerts</span>
+            </button>
+            <button type="button" id="btn-test-15min-alert" class="btn btn-ghost btn-sm">Test 15-Min Alert</button>
+          </div>
+        </div>
+
+        <!-- Confirmed Shifts List -->
+        <div class="my-shifts-header-row">
+          <h3>Your Confirmed Shifts (<span id="my-shifts-total-count">0</span>)</h3>
+          <span class="total-hours-chip" id="my-shifts-total-hours">0 hrs total</span>
+        </div>
+        <div id="my-shifts-list" class="my-shifts-list" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ===================== TAB 3: VOLUNTEER GUIDE ===================== -->
+    <section id="panel-guide" class="tab-panel" aria-labelledby="guide-heading">
+      <div class="section-header">
+        <div>
+          <h2 id="guide-heading">Volunteer Guide &amp; Check-In</h2>
+          <p class="section-subtitle">Everything you need for a smooth, joyful day at Mountaineer Park.</p>
+        </div>
+        <a id="link-festival-guide" href="https://endlessmountainspride.github.io/endless-mountains-pride/" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open Festival Guide App ↗</a>
+      </div>
+
+      <div class="guide-grid">
+        <article class="card guide-card">
+          <div class="guide-card-tag">Arrival</div>
+          <h3>Check-In &amp; Briefing</h3>
+          <p id="guide-checkin-text">Please arrive 10 minutes before your shift and check in at the emPRIDE &amp; Drinks tent in the center grounds to grab your volunteer shirt and shift briefing.</p>
+          <ul class="guide-list">
+            <li>Pick up your free Endless Mountains Pride volunteer t-shirt and station lanyard.</li>
+            <li>Meet your shift lead for a quick 2-minute walkthrough and radio/supply handoff.</li>
+            <li>Need a quick restroom or shade break? Flag our Grounds Floater volunteer anytime!</li>
+          </ul>
+        </article>
+
+        <article class="card guide-card">
+          <div class="guide-card-tag">Reminders</div>
+          <h3>How Reminders &amp; Changes Work</h3>
+          <ul class="guide-list">
+            <li><strong>Instant Confirmation:</strong> Right after signing up, you receive a confirmation email with your Manage Code and a calendar invite (<code>.ics</code>) with a built-in 15-minute phone alarm.</li>
+            <li><strong>Day-Before Email:</strong> The morning before your shift, we send one clean summary email of everything you signed up for.</li>
+            <li><strong>15-Minute Shift Alert:</strong> 15 minutes before your shift begins, you get an automated email plus an optional browser chime/banner here in the app.</li>
+            <li><strong>Plans Change?</strong> Open <strong>My Shifts</strong> to swap to another time or release your spot — it reopens immediately for someone else.</li>
+          </ul>
+        </article>
+
+        <article class="card guide-card">
+          <div class="guide-card-tag">Comfort &amp; Care</div>
+          <h3>What to Bring &amp; Perks</h3>
+          <ul class="guide-list">
+            <li>Comfortable walking shoes, sunscreen, and a hat for sunny outdoor stations.</li>
+            <li>Reusable water bottle — free ice-cold water refills are available all day at <strong>emPRIDE &amp; Drinks</strong> and the <strong>Quiet Corner Canopy</strong>.</li>
+            <li>All outdoor stations have shaded canopies and folding chairs available.</li>
+            <li>Sensory-friendly break area with shade, water, and earplugs is always open at the Quiet Corner Canopy.</li>
+          </ul>
+        </article>
+
+        <article class="card guide-card">
+          <div class="guide-card-tag">Contact</div>
+          <h3>Volunteer Coordination</h3>
+          <p id="guide-coordinator-name"><strong>Endless Mountains Pride Volunteer Team</strong></p>
+          <p id="guide-coordinator-contact" class="guide-muted">Have a question about accessibility, group volunteering, or day-of arrival? Reach out to our organizers or check in at the emPRIDE &amp; Drinks tent on festival day.</p>
+          <div class="guide-venue-box">
+            <strong id="guide-venue-name">Mountaineer Park</strong>
+            <span id="guide-venue-sub">Endless Mountains, PA</span>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Sticky Multi-Slot Selection Tray (slides up when 1+ open slots selected) -->
+  <div id="selection-tray" class="selection-tray hidden" role="region" aria-label="Selected volunteer shifts">
+    <div class="selection-tray-inner">
+      <div class="selection-tray-info">
+        <strong id="tray-count">1 shift selected</strong>
+        <span id="tray-summary">2 hrs · Main Entrance</span>
+      </div>
+      <div class="selection-tray-actions">
+        <button type="button" id="btn-tray-clear" class="btn btn-ghost btn-sm">Clear</button>
+        <button type="button" id="btn-tray-signup" class="btn btn-primary">Complete Sign-Up →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button class="mobile-tab active" data-tab="shifts" id="mob-tab-shifts" type="button">
+      <span class="mob-icon" aria-hidden="true">🙌</span>
+      <span>Shifts</span>
+    </button>
+    <button class="mobile-tab" data-tab="my-shifts" id="mob-tab-my-shifts" type="button">
+      <span class="mob-icon" aria-hidden="true">📋</span>
+      <span>My Shifts</span>
+      <span class="nav-badge hidden" id="mob-my-count">0</span>
+    </button>
+    <button class="mobile-tab" data-tab="guide" id="mob-tab-guide" type="button">
+      <span class="mob-icon" aria-hidden="true">🧭</span>
+      <span>Guide</span>
+    </button>
+  </nav>
+
+  <!-- ===================== MODAL: SIGN UP / CONFIRMATION ===================== -->
+  <div id="signup-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="signup-modal-title">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 id="signup-modal-title">Complete Volunteer Sign-Up</h3>
+        <button type="button" class="btn-icon-close modal-close" data-close="signup-modal" aria-label="Close sign-up dialog">✕</button>
+      </div>
+
+      <!-- Step 1: Details Form -->
+      <div id="signup-step-form" class="modal-body">
+        <div class="selected-shifts-review">
+          <div class="review-label">Selected Shifts</div>
+          <div id="signup-slots-review" class="review-list"></div>
+        </div>
+
+        <form id="signup-form" class="stack-form" novalidate>
+          <div class="form-field">
+            <label for="vol-name">Full Name <span class="req">*</span></label>
+            <input type="text" id="vol-name" required placeholder="Alex Rivera" autocomplete="name" />
+          </div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="vol-email">Email Address <span class="req">*</span></label>
+              <input type="email" id="vol-email" required placeholder="alex@example.com" autocomplete="email" />
+            </div>
+            <div class="form-field">
+              <label for="vol-phone">Phone Number <span class="req">*</span></label>
+              <input type="tel" id="vol-phone" required placeholder="(570) 555-0148" autocomplete="tel" />
+            </div>
+          </div>
+          <div class="form-field">
+            <label for="vol-notes">Optional Notes <span class="opt">(T-shirt size, accessibility needs, or friend you’d like to pair with)</span></label>
+            <input type="text" id="vol-notes" maxlength="200" placeholder="e.g. Size L tee, happy to help wherever needed" />
+          </div>
+
+          <div id="signup-error" class="form-error hidden" role="alert"></div>
+
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-outline modal-close" data-close="signup-modal">Back</button>
+            <button type="submit" id="btn-submit-signup" class="btn btn-primary">Confirm Volunteer Sign-Up</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2: Success Confirmation -->
+      <div id="signup-step-success" class="modal-body hidden">
+        <div class="success-hero">
+          <div class="success-check" aria-hidden="true">✓</div>
+          <h4>You’re on the Pride Crew!</h4>
+          <p id="success-message">Your shift slots are now reserved and unavailable to others.</p>
+        </div>
+
+        <div class="success-code-box">
+          <span class="success-code-label">Your Manage Code (for changing or canceling shifts anytime)</span>
+          <div class="success-code-row">
+            <strong id="success-manage-code">------</strong>
+            <button type="button" id="btn-success-copy-code" class="btn btn-outline btn-sm">Copy Code</button>
+          </div>
+        </div>
+
+        <div class="success-next-actions">
+          <button type="button" id="btn-success-ics" class="btn btn-primary btn-full">📅 Add Shifts to Phone Calendar (15-Min Alarm)</button>
+          <button type="button" id="btn-success-notify" class="btn btn-outline btn-full">🔔 Enable 15-Min Browser Alerts</button>
+          <button type="button" id="btn-success-my-shifts" class="btn btn-ghost btn-full">Go to My Shifts →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: SWAP / CHANGE SHIFT ===================== -->
+  <div id="swap-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="swap-modal-title">
+    <div class="modal-sheet modal-sheet-wide">
+      <div class="modal-header">
+        <h3 id="swap-modal-title">Change / Swap Shift</h3>
+        <button type="button" class="btn-icon-close modal-close" data-close="swap-modal" aria-label="Close swap dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="swap-current-box">
+          <span class="review-label">Replacing This Shift (will immediately reopen for others):</span>
+          <div id="swap-current-summary"></div>
+        </div>
+
+        <div class="swap-filter-row">
+          <input type="search" id="swap-search" placeholder="Filter open replacement slots by station or time…" aria-label="Filter replacement slots" />
+        </div>
+
+        <div id="swap-error" class="form-error hidden" role="alert"></div>
+        <div id="swap-options-list" class="swap-options-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: EDIT CONTACT INFO ===================== -->
+  <div id="profile-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 id="profile-modal-title">Update Your Contact Info</h3>
+        <button type="button" class="btn-icon-close modal-close" data-close="profile-modal" aria-label="Close contact dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="profile-form" class="stack-form" novalidate>
+          <div class="form-field">
+            <label for="edit-vol-name">Full Name</label>
+            <input type="text" id="edit-vol-name" required />
+          </div>
+          <div class="form-field">
+            <label for="edit-vol-phone">Phone Number</label>
+            <input type="tel" id="edit-vol-phone" required />
+          </div>
+          <div class="form-field">
+            <label for="edit-vol-notes">Notes</label>
+            <input type="text" id="edit-vol-notes" maxlength="200" />
+          </div>
+          <div id="profile-error" class="form-error hidden" role="alert"></div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-outline modal-close" data-close="profile-modal">Cancel</button>
+            <button type="submit" id="btn-save-profile" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: ORGANIZER SETUP & SHEET CONNECTION ===================== -->
+  <div id="setup-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="setup-modal-title">
+    <div class="modal-sheet modal-sheet-wide">
+      <div class="modal-header">
+        <h3 id="setup-modal-title">Google Sheet &amp; Reminder Setup</h3>
+        <button type="button" class="btn-icon-close modal-close" data-close="setup-modal" aria-label="Close setup dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setup-status-card" id="setup-status-card">
+          <div class="setup-status-row">
+            <span class="status-pill" id="setup-status-pill">Preview Mode</span>
+            <a id="setup-sheet-link" href="#" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open Google Sheet ↗</a>
+          </div>
+          <p id="setup-status-desc" class="card-sub">Currently saving test signups in your browser. Deploy the included Google Apps Script once to enable real multi-user Google Sheets syncing and automated Day-Before &amp; 15-Minute emails.</p>
+        </div>
+
+        <form id="setup-url-form" class="stack-form" novalidate>
+          <div class="form-field">
+            <label for="setup-script-url">Google Apps Script Web App URL (ends in <code>/exec</code>)</label>
+            <div class="inline-input-row">
+              <input type="url" id="setup-script-url" placeholder="https://script.google.com/macros/s/.../exec" />
+              <button type="submit" id="btn-save-script-url" class="btn btn-primary btn-sm">Connect</button>
+            </div>
+            <small class="field-hint">Saves in this browser for testing. To connect all volunteers automatically, also paste this URL into <code>config.js → APPS_SCRIPT_URL</code>.</small>
+          </div>
+          <div id="setup-url-feedback" class="form-feedback hidden" role="status"></div>
+        </form>
+
+        <div class="setup-steps">
+          <h4>3-Minute Live Activation Checklist</h4>
+          <ol>
+            <li>Open your <a id="setup-sheet-link-inline" href="#" target="_blank" rel="noopener">Endless Mountains Pride - Volunteer Schedule</a> Google Sheet and edit dates, locations, needed counts, or times in the <strong>Shifts</strong> tab anytime.</li>
+            <li>In Google Sheets, go to <strong>Extensions → Apps Script</strong>, paste the contents of <code>apps-script/Code.gs</code>, and click <strong>Save</strong>.</li>
+            <li>Click <strong>Deploy → New deployment → Web app</strong> (Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong>), copy the <code>/exec</code> URL, and paste it above (and into <code>config.js</code>).</li>
+            <li>Reload your Google Sheet and click the top menu <strong>🏳️‍🌈 Volunteer Hub → ✅ Enable Automated Reminders</strong> to turn on Day-Before and 15-Minute-Before shift emails!</li>
+          </ol>
+        </div>
+
+        <div class="setup-footer-row">
+          <button type="button" id="btn-reset-demo" class="btn btn-ghost btn-sm">Reset Local Preview Signups</button>
+          <button type="button" class="btn btn-outline btn-sm modal-close" data-close="setup-modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

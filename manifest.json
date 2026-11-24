@@ -1,0 +1,21 @@
+{
+  "name": "Endless Mountains Pride — Volunteer Hub",
+  "short_name": "EMP Volunteers",
+  "description": "Sign up for volunteer shifts, manage or swap your selections, and receive 15-minute shift reminders for Endless Mountains Pride at Mountaineer Park.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FAF8F3",
+  "theme_color": "#17322B",
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
